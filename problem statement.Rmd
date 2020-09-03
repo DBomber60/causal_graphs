@@ -35,44 +35,74 @@ kable(df)
 
 ## Strategy 1: Marginalize out the effect of Z1
 
-$$
-\begin{aligned}
+Assume a linear model for response $Y$ (correctly),
 
+\begin{aligned}
 E_{Y|A0,A1} &= E_{Z1|A0} \big(E(Y|A0,Z1,A1) \big) \\
 &= E_{Z1|A0} \big( \beta_0 + \beta_1 A0 + \beta_2 Z1 + \beta_3 A1  \big)
-
 \end{aligned}
-$$
+
 Then, since Z1 is binary, we can model it using logistic regression where,
+
+
+\begin{aligned}
+E(Z1|A0) &= P(Z1=1 \vert A0 ) = \text{logit}^{-1} (\alpha_0 + \alpha_1 A0)\\
+\end{aligned}
+
+Since A0 is also binary, we can define the following two quantities,
+
+\begin{aligned}
+\xi_1 &= \text{logit}^{-1} (\alpha_0 + \alpha_1) \\
+\xi_0 &= \text{logit}^{-1} (\alpha_0)
+\end{aligned}
+
+And then distribute the expectation to each term,
 
 $$
 \begin{aligned}
-
-E(Z1|A0) &= P(Z1=1 \vert A0 ) = \text{logit}^{-1} (\alpha_0 + \alpha_1 A0)\\
-
+E_{Z1|A0} \big( \beta_0 + \beta_1 A0 + \beta_2 Z1 + \beta_3 A1  \big) &= \beta_0 + \beta_1 A0 + \beta_2 E(Z1|A0) + \beta_3 A1   \\
+&= \beta_0 + \beta_1 A0 + \beta_2 \big( \xi_1 A0 + \xi_0(1-A0)) + \beta_3 A1 \\
+&= (\beta_0+\beta_2 \xi_0) + (\beta_1 + \beta_2(\xi_1-\xi_0)) A0 + \beta_3 A1 \\
+&= \phi_0 + \phi_1 A0 + \phi_2 A1
 \end{aligned}
 $$
+
+This can all be done easily in R,
 
 ```{r}
 # 1. get beta coefficients
-m0 = lm(Y ~ A0 + Z1 + A1, weights = N)
-pander(summary(m0))
+m0 = lm(Y ~ A0 + Z1 + A1, weights = N) # E(Y| A0, Z1, A1)
+m1 = glm(Z1 ~ A0, family = binomial, weights = N) # E(Z1 | A0)
+
+xi_1 = plogis( sum(m1$coefficients) ) # xi_1
+xi_0 = plogis( m1$coefficients[1] ) # xi_0
+
+phi_0 = m0$coefficients[1] + m0$coefficients[3] * xi_0
+phi_1 = m0$coefficients[2] + m0$coefficients[3] * (xi_1 - xi_0)
+phi_2 = m0$coefficients[4]
 ```
 
-```{r}
-mz = glm(Z1 ~ A0, family = binomial, weights = N)
-e1 = plogis( sum(mz$coefficients) ) # e1
-e0 = plogis( mz$coefficients[1] ) # e0
-```
+As expected, $\phi_0 =$ `r round(phi_0,2)`; $\phi_1 =$ `r round(phi_1,2)`; $\phi_2 =$ `r round(phi_2,2)`.
 
-```{r}
+However, this computation relied on:
 
-```
-
+- Binary treatment A0
+- Linear model for outcome $Y$ (in order to bring the outer expectation inside).
 
 
 ## MSM via Inverse Probability Weighting 
 
+In a 
+
+
+
+$P(Y^a=y|A=a,L=l)=P(Y^a=y|A=a',L=l)$. That is, $Y^a \perp A | L$.  Or, within levels of patient risk, $L$, counterfactual outcomes are independent of the treatment received.
+  \item \textbf{Consistency} - Values of treatment under comparison correspond to well-defined interventions that, in turn, correspond to the versions of treatment in the data. That is. $Y^a=Y$ when treatment $a$ has been observed, where $Y$ is the observed value of the outcome.
+\end{enumerate}
+
+Under these assumptions, we can think of our data as a conditionally random experiment where treatment is randomized within levels of $L$. That is, within the subset $L=l$, we have
+\begin{equation*}
+E(Y|A=a,L=l) = E(Y^a|L=l)
 
 
 
