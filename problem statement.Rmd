@@ -1,6 +1,8 @@
 ---
 title: "Ci"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -8,10 +10,13 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(knitr)
 library(xtable)
+library(igraph)
 library(pander)
 ```
 
-## Data
+### Data
+
+First let's revisit the example that we looked at previously from [this paper](https://tinyurl.com/y45qk8d4) where we have data from a treatment that occurs at two time points. The treatment at the first time point, $A0$, has a causal effect on the covariate $Z1$, which in turn has an effect on $A1$. All three have an effect on the outcome, $Y$.
 
 ```{r echo=FALSE}
 # in order to use modelling, need to hypothesize a dose-response fn
@@ -24,7 +29,52 @@ df = data.frame(A0=A0, Z1=Z1, A1=A1, Y=Y, N=N)
 kable(df)
 ```
 
-## Inverse Probability Weighting
+```{r}
+# draw a graph of the effects using igraph
+```
+
+## Strategy 1: Marginalize out the effect of Z1
+
+$$
+\begin{aligned}
+
+E_{Y|A0,A1} &= E_{Z1|A0} \big(E(Y|A0,Z1,A1) \big) \\
+&= E_{Z1|A0} \big( \beta_0 + \beta_1 A0 + \beta_2 Z1 + \beta_3 A1  \big)
+
+\end{aligned}
+$$
+Then, since Z1 is binary, we can model it using logistic regression where,
+
+$$
+\begin{aligned}
+
+E(Z1|A0) &= P(Z1=1 \vert A0 ) = \text{logit}^{-1} (\alpha_0 + \alpha_1 A0)\\
+
+\end{aligned}
+$$
+
+```{r}
+# 1. get beta coefficients
+m0 = lm(Y ~ A0 + Z1 + A1, weights = N)
+pander(summary(m0))
+```
+
+```{r}
+mz = glm(Z1 ~ A0, family = binomial, weights = N)
+e1 = plogis( sum(mz$coefficients) ) # e1
+e0 = plogis( mz$coefficients[1] ) # e0
+```
+
+```{r}
+
+```
+
+
+
+## MSM via Inverse Probability Weighting 
+
+
+
 
 ```{r echo=FALSE}
 
