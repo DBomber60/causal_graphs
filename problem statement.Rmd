@@ -1,5 +1,5 @@
 ---
-title: "Ci"
+title: "Causal Inference Project"
 output:
   html_document: default
   pdf_document: default
@@ -12,28 +12,58 @@ library(knitr)
 library(xtable)
 library(igraph)
 library(pander)
+library(igraph)
 ```
 
-### Data
+#### Overall Goal
 
-First let's revisit the example that we looked at previously from [this paper](https://tinyurl.com/y45qk8d4) where we have data from a treatment that occurs at two time points. The treatment at the first time point, $A0$, has a causal effect on the covariate $Z1$, which in turn has an effect on $A1$. All three have an effect on the outcome, $Y$.
+Attempt to bridge (at least a tiny sliver of) the gap between advocates of causal graphical modeling and probability theory, particularly Bayesian methods. Emphasis on the problem of time-dependent confounding. This issue is prevalent in many longitudinal studies in which: (1) there exists a time-dependent covariate that is a risk factor for, or predictor of, the outcome of interest and also predicts subsequent exposure, and (2) past exposure history predicts subsequent level of the covariate.
+
+
+#### Example Problem: Time Varying Treatment with Time Dependent Confounding
+
+Let's revisit the example that we looked at previously from [this paper](https://tinyurl.com/y45qk8d4) where we have data from a treatment that occurs at two time points. The treatment at the first time point, $A0$, has a causal effect on the covariate $Z1$, which in turn has an effect on $A1$. All three have an effect on the outcome, $Y$, including an unmeasured confounder $U$.
+
+```{r echo=FALSE}
+edges = c(1,2,1,3,1,4,2,3,2,4,3,4,5,2,5,4)
+g = make_graph(edges) %>% 
+  set_vertex_attr("label", value = c("A0", "Z1", "A1", "Y", "U"))
+plot(g, edge.arrow.size=.5, vertex.color="gold", vertex.size=15)
+```
+
 
 ```{r echo=FALSE}
 # in order to use modelling, need to hypothesize a dose-response fn
+
 A0 = c(0,0,0,0,1,1,1,1)
 Z1 = c(0,0,1,1,0,0,1,1)
 A1 = c(0,1,0,1,0,1,0,1)
 Y = c(87.29, 112.11, 119.65, 144.84, 105.28, 130.18, 137.72, 162.83)
 N = c(209271, 93779, 60654, 136293, 134781, 60789, 93903, 210527)
 df = data.frame(A0=A0, Z1=Z1, A1=A1, Y=Y, N=N)
-kable(df)
+kable(df, caption = "Data from: Introduction to G-Methods")
 ```
 
-```{r}
-# draw a graph of the effects using igraph
-```
+#### Goal
 
-## Strategy 1: Marginalize out the effect of Z1
+The goal is to estimate the causal effect of $A0$ and of $A1$ on $Y$. What is the relationship between a conditional probability, such as $p(Y \vert A1, Z1)$, of a random variable (i.e., what we usually model as statisticians) and a counterfactual outcome, such as $p(Y^{a1} \vert Z1)$ (i.e., what the methods of causal inference aim to model)?
+
+The key to connecting the two is the idea of conditional exchangeability. Consider a situation in which we have a single treatment, $A$, outcome, $Y$, and covariate, $Z$, which has a causal effect on both. Conditional exchangeability is achieved when the distribution of the **counterfactual** outcome is conditionally independent of the treatment received. Stated differently,
+
+
+\begin{aligned}
+p(Y^a=y \vert A=a, Z=z) &=p(Y^a=y \vert A=a', Z=z)  \text{ or, } Y^a \perp A \vert Z
+\end{aligned}
+
+When this is achieved, along with the condition of consistency, then association within levels of $Z$ can have a causal interpretation. Furthermore, we can use the observed data to estimate the counterfactual variable since:
+
+
+\begin{aligned}
+p(Y^a=y \vert Z=z) = p(Y=y \vert A=a, Z=z)
+\end{aligned}
+
+
+#### Strategy 1: Marginalize out the effect of Z1
 
 Assume a linear model for response $Y$ (correctly),
 
@@ -52,8 +82,8 @@ E(Z1|A0) &= P(Z1=1 \vert A0 ) = \text{logit}^{-1} (\alpha_0 + \alpha_1 A0)\\
 Since A0 is also binary, we can define the following two quantities,
 
 \begin{aligned}
-\xi_1 &= \text{logit}^{-1} (\alpha_0 + \alpha_1) \\
-\xi_0 &= \text{logit}^{-1} (\alpha_0)
+\xi_1 &= P(Z1=1 \vert A0=1 ) = \text{logit}^{-1} (\alpha_0 + \alpha_1) \\
+\xi_0 &= P(Z1=1 \vert A0=0 ) = \text{logit}^{-1} (\alpha_0)
 \end{aligned}
 
 And then distribute the expectation to each term,
@@ -90,36 +120,96 @@ However, this computation relied on:
 - Linear model for outcome $Y$ (in order to bring the outer expectation inside).
 
 
-## MSM via Inverse Probability Weighting 
+#### MSM via Inverse Probability Weighting 
 
-In a 
+The Hernan/ Robins approach to this problem is using a marginal structural model,
 
+$$
+\begin{aligned}
+E(Y^{a0,a1}) = \beta_0 + \beta_1 A0 + \beta_2 A1
+\end{aligned}
+$$
 
-
-$P(Y^a=y|A=a,L=l)=P(Y^a=y|A=a',L=l)$. That is, $Y^a \perp A | L$.  Or, within levels of patient risk, $L$, counterfactual outcomes are independent of the treatment received.
-  \item \textbf{Consistency} - Values of treatment under comparison correspond to well-defined interventions that, in turn, correspond to the versions of treatment in the data. That is. $Y^a=Y$ when treatment $a$ has been observed, where $Y$ is the observed value of the outcome.
-\end{enumerate}
-
-Under these assumptions, we can think of our data as a conditionally random experiment where treatment is randomized within levels of $L$. That is, within the subset $L=l$, we have
-\begin{equation*}
-E(Y|A=a,L=l) = E(Y^a|L=l)
+Which is estimated using IPW weighting with weights given by, $1/\hat{P}(A0,A1|Z1)$. This is referred to as the **treatment model**. Again, this can be done easily for this example,
 
 
-
-```{r echo=FALSE}
-
+```{r echo=T}
+# fit the MSM
+# we are given that P(A0) = 0.5; so we only need to model P(A1 | Z1)
+# that is, P(A0, A1 | Z1) = 0.5 * P(A1 | Z1)
 tm = glm(A1 ~ Z1, weights = N, family = binomial) # treatment model
 tm_sw = glm(A1 ~ 1, weights = N, family = binomial) # treatment model - stabilize weights
 
 sw_num = ifelse(df$A1==1, plogis(coefficients(tm_sw))*.5, (1-plogis(coefficients(tm_sw))) * .5 )
-
 sw_den = ifelse(df$A1 == 1, fitted.values(tm), 1- fitted.values(tm)) * .5
 
-pseudo_N = sw_num/sw_den * N
-
+pseudo_N = sw_num/sw_den * N # new weights (pseudeo-population)
 mod = lm(Y ~ A0 + A1, weights = pseudo_N)
 pander(summary(mod))
 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+This has some benefits over the marginalization approach (notably, accomdates a glm for Y as opposed to a lm) but also has drawbacks including,
+
+- Depends on a correclty specified treatment model. Further, even with a correctly specified treatment model, when some treatment combinations have very low probability, the model becomes unstable. This becomes almost unavoidable in cases where there are many time points.
+- Variance of the estimates are unclear and often ignored.
+
+## New Example
+
+```{r}
+
+set.seed(1)
+n = 20000
+U = rbinom(n, 1, .4) # severe immunosupression = 1
+A0 = rbinom(n, 1, .5)
+# CD4 count: 1 is bad (low count)
+Z1 = rbinom(n, 1, p = plogis( qlogis(.5) + (qlogis(.3) - qlogis(.5)) * A0 + (qlogis(.8)-qlogis(.5)) * U ))
+A1 = rbinom(n, 1, p = plogis( qlogis(.5) + (qlogis(.8) - qlogis(.5)) * Z1 ))
+Y = rnorm(n, mean = 100 - 10 * U)
+ex2dat = data.frame(Y=Y, A0=A0, Z1=Z1, A1=A1)
+
+```
+
+## Marginalization Approach
+
+```{r}
+m0 = lm(Y ~ A0 + Z1 + A1)
+
+m1 = glm(Z1 ~ A0, family = binomial) # E(Z1 | A0)
+xi_1 = plogis( sum(m1$coefficients) ) # xi_1
+xi_0 = plogis( m1$coefficients[1] ) # xi_0
+
+phi_0 = m0$coefficients[1] + m0$coefficients[3] * xi_0
+phi_1 = m0$coefficients[2] + m0$coefficients[3] * (xi_1 - xi_0)
+phi_2 = m0$coefficients[4]
+```
+
+$\phi_0 =$ `r round(phi_0,2)`; $\phi_1 =$ `r round(phi_1,2)`; $\phi_2 =$ `r round(phi_2,2)`.
+
+
+## MSM approach
+
+```{r echo=T}
+# fit the MSM
+# we are given that P(A0) = 0.5; so we only need to model P(A1 | Z1)
+# that is, P(A0, A1 | Z1) = 0.5 * P(A1 | Z1)
+tm = glm(A1 ~ Z1, family = binomial, data = ex2dat) # treatment model
+tm_sw = glm(A1 ~ 1, family = binomial, data = ex2dat) # treatment model - stabilize weights
+
+sw_num = ifelse(ex2dat$A1 == 1, plogis(coefficients(tm_sw))*.5, (1-plogis(coefficients(tm_sw))) * .5 )
+sw_den = ifelse(ex2dat$A1 == 1, fitted.values(tm), 1- fitted.values(tm)) * .5
+
+pseudo_N = sw_num/sw_den # new weights (pseudeo-population)
+mod = lm(Y ~ A0 + A1, weights = pseudo_N)
+pander(summary(mod))
+
+```
+
+
+### Next Steps
+
+For the simplest possible scenario of time-dependent confounding, represent the causal graphical model as a bayesian network and estimate parameters using *standard* techniques of Bayesian inference. 
+
+
+
+

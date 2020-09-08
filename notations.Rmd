@@ -1,0 +1,153 @@
+---
+#title: ""
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### Causal Inference Notation: Counterfactual RVs and Causal Effect
+
+Let $A$ denote a treatment and $Y$ an outcome. For simplicity, assume both are binary. In order to define a causal effect, decompose $Y$ into two new random variables, **counterfactuals**: $Y^1$ is the outcome of the subject under treatment 1 and $Y^0$ is the outcome of the subject under treatment 0. When $A=1$, $Y^0$ is unobserved (and vice-versa). With these new random variables, we can define causal effects by comparing outcomes under treatments; for instance, the average causal effect is $\theta = E(Y^1) - E(Y^0)$.
+
+#### Randomized Experiments
+
+Now let us explore these concepts a little bit further in the setting of randomized experiments. Let $\mathcal{A}= \{a,a',a'', \ldots \}$ denote the full set of treatment values and $Y^{\mathcal{A}} = \{Y^a, Y^{a'},Y^{a''}, \ldots \}$ denote the full set of counterfactual outcomes. The key characteristic of randomization is that the set of counterfactual outcomes are jointly independent of treatment, $Y^{\mathcal{A}} \perp A$. This is referred to as **exchangeability**.
+
+Continuing the example above, exchangeability implies that $P(Y^1 = 1 \vert A=0) = P(Y^1 = 1 \vert A=1)$. So, the risk under treatment level 1 does not depend on the treatment the individual actually received. This is achieved by the random assignment of treatment.
+
+The second key condition needed to estimate causal effects is **consistency**. For any individual, we observe only one of their counterfactuals. For an individual who received treatment level $a'$, we observe $Y^{a'}$. This idea is formalized with the consistency condition, which requires that values of treatment under comparison correspond to well-defined interventions that, in turn, correspond to the versions of treatment in the data. That is. $Y^{a'}=Y$ when treatment $a'$ has been observed, where $Y$ is the observed value of the outcome.
+
+These two conditions allow us to use the *ordinary* tools of statistics (here, estimating conditional expectation functions) and observed data to consistently estimate causal effects. In particular,
+
+$$
+\begin{aligned}
+E(Y \vert A=a) &= E(Y^{a} \vert A=a) & \text{consistency} \\
+ &= E(Y^{a}) & \text{exchangeability} \\
+\end{aligned}
+$$
+
+The situation is slightly complicated in observational studies.
+
+
+#### Observational Studies
+
+In observational studies, treatment is not randomly assigned. In particular, there may be variables that have an effect on both the observed treatment level and the outcome of interest (confounders). However, if we have data on these variables, let us denote them $L$, then we can achieve **conditional exchangeability**, in which:
+
+$P(Y^a=y|A=a,L=l)=P(Y^a=y|A=a',L=l)$. That is, $Y^a \perp A | L$ for all $a \in \mathcal{A}$.
+
+Or, within levels of $L$, counterfactual outcomes are independent of the treatment received. Another way to think of this is that we effectively have data from a randomized experiment within levels of $L$.
+
+Therefore, we can again use exchangeability and consistency to translate between counterfactuals and conditional expectations,
+
+$$
+\begin{aligned}
+E(Y \vert A=a, L=l) &= E(Y^{a} \vert A=a, L=l) & \text{consistency} \\
+ &= E(Y^{a} \vert L=l) & \text{exchangeability} \\
+\end{aligned}
+$$
+
+Suppose, as before, we aim to estimate the average causal effect, $\theta = E(Y^{a'}) - E(Y^{a})$ (this time the effect pertains to the comparison between treatment levels $a$ and $a'$). Then we can use the law of total expectations to attain each term,
+
+$$
+\begin{aligned}
+E(Y^{a}) &= \sum_lE(Y^{a} \vert L=l) P(L=l) \\
+&= \sum_lE(Y \vert A=a, L=l) P(L=l)
+\end{aligned}
+$$
+
+Ok, so how can we estimate this quantity?
+
+#### IP Weighting
+
+The most prevalent method in the literature is using some form of weighting. Let's consider the DAG structure corresponding to the simple observational scenario (single time point and confounder $L$) outlined above. 
+
+```{r echo = F, message=F, warning=F}
+library(igraph)
+edges = c(1,2,1,3,2,3)
+g = make_graph(edges) %>% set_vertex_attr("label", value = c("L", "A", "Y"))
+plot(g)
+```
+
+We consider each variable as random. The joint distribution can be expressed,
+
+$$
+\begin{aligned}
+P(L,A,Y) = P(L=l) P(A=a|L) P(Y|A=a,L=l) \\
+\end{aligned}
+$$
+
+We aim to estimate $E(Y^{a'})$. Let's consider the following quantity,
+
+$$
+\begin{aligned}
+\frac{{1}(A=a')Y} {P(A=a'|L)} \\
+\end{aligned}
+$$
+
+where the observed value of the outcome under treatment $a'$ is weighted by the treatment probability given covariates $L$. Provided that we have correctly specified the treatment model, $P(A \vert L)$, this quantity is an unbiased estimator of the counterfactual outcome since,
+
+$$
+\begin{aligned}
+E \bigg( \frac {1(A=a')y} {P(A=a'|L)} \bigg) &= \sum_y \sum_l \sum_a \bigg( \frac{ {1}(A=a')y} {P(A=a'|L)} \bigg) P(L=l,A=a,Y=y) \\
+&= \sum_l \sum_y y P(Y|A=a,L=l) P(L=l) \\
+&= \sum_l E(Y \vert A=a, L=l) P(L=l) \\
+&= E(Y^{a'})
+\end{aligned}
+$$
+
+Therefore, we can estimate $E(Y^{a'})$ by taking a weighted mean of the outcomes observed at treatment $a'$ where each is weighted by $1/P(Y|A=a',L=l)$. However, in the case where there are many treatment levels or treatment is continuous, this is not practical. In this scenario, we must hypothesize a dose response relationship, for example a linear dose response can be expressed,
+
+$$
+\begin{aligned}
+E(Y^{a}) = \beta_0 + \beta_1 a
+\end{aligned}
+$$
+Where $\beta_1$ can be interpreted as the causal effect of treatment. In this more general scenario, the coefficients can be estimated using the *weighted* estimating equation,
+
+$$
+\begin{aligned}
+U(\beta) &= \sum_i \frac{(y_i- \left\{\beta_0+\beta_1a_i  \right\}   )} {p(a_i|l_i)} 
+\end{aligned}
+$$
+
+which can accommodate a range of dose-response functions as well as treatment models (weights).
+
+#### Example
+
+Consider a scenario where we aim to estimate the effect of a binary treatment, $A$, on a continuous outcome, $Y$, using observational data. Let's suppose we also have data on each patients' health, $L = \{1= \text{poor}, 2= \text{medium}, 3 = \text{good} \}$ and that $Y$ is a measure of cholesterol. Suppose that patients with better health are less likely to get treatment and that better health causes lower cholesterol. We want to estimate the population average causal effect, $\theta = E(Y^1) - E(Y^0)$ (i.e., no conditioning on $L$). The *true* value of $\theta$ is $-10$.
+
+```{r echo=TRUE}
+
+set.seed(1)
+n = 1000 # number of subjects
+L = sample.int(3, size = n, replace = T, prob = c(1, 1, 1)) # health level (higher is better)
+A = rbinom(n, 1, prob = plogis(2-L)) # healthier less likely to get treatment
+Y = rnorm(n, mean = 200 - 10 * A - 20 * L) 
+
+# simple linear model, no conditioning on L
+beta1.m0 = lm(Y ~ A)$coefficients[2]
+
+# P(A|L)
+tm = glm(A ~ L, family = binomial)
+pa1 = predict(tm, type = "response") # P(A=1 | L)
+w = ifelse(A==1, pa1, 1-pa1) # P(A=a | L)  = W
+
+mod = lm(Y ~ A, weights = 1/w)
+beta1.m1 = coefficients(mod)[2]
+```
+
+The simple estimator,
+
+$$
+\begin{aligned}
+\hat{\alpha} = \hat{E}(Y\vert A=1) - \hat{E}(Y\vert A=0)
+\end{aligned}
+$$
+yields $\hat{\alpha}=$ `r beta1.m0`. This would indicate that the treatment *increases* cholesterol. This bias arises since less healthy people with higher cholesterol are the ones who get treatment. On the other hand, the IPW derived estimate of the population average causal effect is `r round(beta1.m1,2)`.
+
+
+
+
