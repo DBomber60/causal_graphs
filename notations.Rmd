@@ -79,7 +79,7 @@ P(L,A,Y) = P(L=l) P(A=a|L) P(Y|A=a,L=l) \\
 \end{aligned}
 $$
 
-We aim to estimate $E(Y^{a'})$. Let's consider the following quantity,
+We aim to estimate $E(Y^{a'})$. Consider the following quantity,
 
 $$
 \begin{aligned}
@@ -92,8 +92,8 @@ where the observed value of the outcome under treatment $a'$ is weighted by the 
 $$
 \begin{aligned}
 E \bigg( \frac {1(A=a')y} {P(A=a'|L)} \bigg) &= \sum_y \sum_l \sum_a \bigg( \frac{ {1}(A=a')y} {P(A=a'|L)} \bigg) P(L=l,A=a,Y=y) \\
-&= \sum_l \sum_y y P(Y|A=a,L=l) P(L=l) \\
-&= \sum_l E(Y \vert A=a, L=l) P(L=l) \\
+&= \sum_l \sum_y y P(Y|A=a',L=l) P(L=l) \\
+&= \sum_l E(Y \vert A=a', L=l) P(L=l) \\
 &= E(Y^{a'})
 \end{aligned}
 $$
@@ -105,7 +105,7 @@ $$
 E(Y^{a}) = \beta_0 + \beta_1 a
 \end{aligned}
 $$
-Where $\beta_1$ can be interpreted as the causal effect of treatment. In this more general scenario, the coefficients can be estimated using the *weighted* estimating equation,
+Where $\beta_1$ can be interpreted as the causal effect of increasing treatment by one unit. In this more general scenario, in which our data consists of $(a_i,l_i, y_i)$, the coefficients can be estimated using the *weighted* estimating equation,
 
 $$
 \begin{aligned}
@@ -146,6 +146,7 @@ $$
 \hat{\alpha} = \hat{E}(Y\vert A=1) - \hat{E}(Y\vert A=0)
 \end{aligned}
 $$
+
 yields $\hat{\alpha}=$ `r beta1.m0`. This would indicate that the treatment *increases* cholesterol. This bias arises since less healthy people with higher cholesterol are the ones who get treatment. On the other hand, the IPW derived estimate of the population average causal effect is `r round(beta1.m1,2)`.
 
 
