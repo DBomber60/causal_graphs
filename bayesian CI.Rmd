@@ -1,0 +1,63 @@
+---
+#title: "Bayesian CI"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Bayesian Causal Inference
+
+#### Potential Outcomes Framework
+
+Let us again consider a fully randomized experiment with binary treatment, $A$, and binary outcome $Y$. Under the potential outcomes framework, there are three quantities associated with each unit, 
+
+$$
+(Y_i^0, Y_i^1, A_i)
+$$
+
+where $Y_i^1$ is the response of unit $i$ under treatment. We assume that our data consists of a sample of $N$ units from a target population. Two of these quantities are observed,
+
+$$
+(Y_i^{obs}=Y_i^{A_i}, A_i)
+$$
+
+And one is missing: $Y_i^{1-A_i}$. Bayesian inference considers the observed values of these quantities to be realizations of random variables and the unobserved values to be unobserved random variables, just like other model parameters. We assume that the joint distribution depends on some parameters, $\Theta$, and we can express the joint distribution as,
+
+$$
+\begin{align}
+P(Y_i^0, Y_i^1, A_i \vert \Theta) = P(A_i \vert Y_i^0, Y_i^1, \Theta) P(Y_i^0, Y_i^1 \vert A_i, \Theta)
+\end{align}
+$$
+Then, we make the following two assumptions,
+
+1. $(Y^1, Y^0) \perp A$
+2. $\Theta = (\theta_Y, \theta_A)$, where the two parameter sets are apriori distinct and independent
+
+Which simplifies the above expression of the joint distribution to,
+
+$$
+\begin{align}
+P(Y_i^0, Y_i^1, A_i \vert \Theta) = P(A_i \vert \theta_A) P(Y_i^0, Y_i^1 \vert \theta_Y)
+\end{align}
+$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

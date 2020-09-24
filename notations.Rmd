@@ -9,6 +9,16 @@ library(tidyverse)
 library(knitr)
 ```
 
+#### Goal
+
+Clarify the connection between causal graphs and Bayesian networks (and their associated estimation procedures). Emphasis on the case of time varying treatments/ time varying confounders, for which marginal structural models/ IP weighting is the ubiquitous estimation method. Ideally, offer a Bayesian (network) approach to this problem and apply to Multicenter AIDS Cohort Study (MACS) and compare results with MSM.
+
+- General introduction to causal inference/ MSM + IP weighting
+- General introduction to Bayesian causal inference (conditioning versus intervention)
+- Bayesian network representation/ solution to single time point treatment/ causal estimand
+- Bayesian network representation/ solution to time varying case 
+- Data analysis
+
 
 #### Causal Inference Notation: Counterfactual RVs and Causal Effect
 
@@ -62,9 +72,15 @@ $$
 
 Ok, so how can we estimate this quantity?
 
+
+#### 
+
+
 #### IP Weighting
 
-The most prevalent method in the literature is using some form of weighting. Let's consider the DAG structure corresponding to the simple observational scenario (single time point and confounder $L$) outlined above. 
+Propensity score weighting is ubiquitous in causal inference, due mainly to its balancing property (treatment is independent of observable covariates given propensity score). There are many implementations. We focus on IP weighting/ marginal structural models since these are the most prevalent for the time varying case (which we aim to approach from a Bayesian (network) perspective).
+
+Let's consider the DAG structure corresponding to the simple observational scenario (single time point and confounder $L$) outlined above. 
 
 ```{r echo = F, message=F, warning=F}
 library(igraph)
@@ -103,7 +119,7 @@ $$
 
 #### Estimation and Marginal Structural Models
 
-Therefore, we can estimate $E(Y^{a'})$ by taking a weighted mean of the outcomes observed at treatment $a'$ where each unit is weighted by $1/P(A=a'|L)$. To illustrate a more general estimating framework, let us again consider the scenario where we have a binary treatment and let us refer to $E(Y^{1})$ as $\mu^1$. Further, we assume that we have $n$ experimental units/ subjects and we aim to estimate the causal risk difference, $\mu^1 - \mu^0$. To estimate the first quantity, we can solve the following estimating equation,
+Therefore, we can estimate $E(Y^{a'})$ by taking a weighted mean of the outcomes observed at treatment $a'$ where each unit is weighted by $1/P(A=a'|L)$. Let us consider a more general framework to carry out this computation using an estimating equation. Let us again consider the scenario where we have a binary treatment and let us refer to $E(Y^{1})$ as $\mu^1$. Further, we assume that we have $n$ experimental units/ subjects and we aim to estimate the causal risk difference, $\theta = \mu^1 - \mu^0$. To estimate the first quantity, $\mu^1$, we can solve the following estimating equation,
 
 $$
 \begin{equation}
@@ -118,11 +134,31 @@ $$
 \hat{\mu^1} &=  \frac{\sum_t y_t/p(a_t \vert l_t)} {\sum_t 1/p(a_t \vert l_t)} \\
 \end{align}
 $$
-where the sum is taken over the treated units, $t=\{i : a_i=1 \}$. This procedure (inverse probability weighting) can be interpreted/ conceptualized as generating a pseudopopulation in which treatment assignments do not depend on $L$. Therefore, in this reweighted sample, we have marginal exchangeability and can estimate the casual risk difference as the associational risk difference among this pseudopopulation. That is $\theta= E(\tilde{Y} \vert A=1) - E(\tilde{Y} \vert A=0)$.
+where the sum is taken over the treated units, $t=\{i : a_i=1 \}$. This procedure (inverse probability weighting) can be interpreted/ conceptualized as generating a pseudo population in which treatment assignments do not depend on $L$. Therefore, in this re-weighted sample, we have marginal exchangeability and can estimate the casual risk difference as the association risk difference among this pseudo population. That is, if we refer to the re-weighted response as $\tilde{Y}$, then $\theta= E(\tilde{Y} \vert A=1) - E(\tilde{Y} \vert A=0)$.
+
+#### Many treatments (Marginal Structural Models)
+
+In the case where there are many treatment levels or treatment is continuous, it makes practical sense to hypothesize a functional relationship between the treatment and response. For example, a linear relationship can be expressed,
+
+$$
+\begin{aligned}
+E(Y^{a}) = \beta_0 + \beta_1 a
+\end{aligned}
+$$
+Where $\beta_1$ can be interpreted as the causal effect of increasing treatment by one unit. More generally, we can refer to this mean function as $\mu(\boldsymbol{\beta})$. In this more general scenario, the coefficients can be estimated using the *weighted* estimating equation,
+
+$$
+\begin{aligned}
+U(\beta) &=  A^{\top}W (y-\mu(\boldsymbol{\beta}))
+\end{aligned}
+$$
+
+in which $W$ is a diagonal matrix in which $w_{ii} = 1/p(A_i \vert L_i)$ and $A$ is our design matrix which includes the treatment assignment for each unit. In the case of a binary treatment/ binary outcome, this reduces to the case above.
+
 
 #### Pseudopopulation Concept
 
-One way to conceptualize the weights generated by IPW is a pseudopopulation in which all sample units undergo each of the treatment levels of interest. Within the $L=0$ segment, there are $8$ units, $4$ of whom were treated. Of the treated $1/4$ died. How many would have died if all of the units with $L=0$ had been treated? By conditional exchangeability, we would expect the same rate of death among the untreated, which would imply one more death had all of the units undergone treatment ($1/4 \times 4$). 
+One way to conceptualize the weights generated by IPW is a pseudo population in which all sample units undergo each of the treatment levels of interest. Within the $L=0$ segment, there are $8$ units, $4$ of whom were treated. Of the treated $1/4$ died. How many would have died if all of the units with $L=0$ had been treated? By conditional exchangeability, we would expect the same rate of death among the untreated, which would imply one more death had all of the units undergone treatment ($1/4 \times 4$). 
 
 ```{r echo=FALSE}
 
@@ -145,7 +181,7 @@ kable(dat)
 
 ```
 
-By inspection, we can see that within levels of $L$, the effect of treatment is $0$. Therefore the causal effect should be $0$. However, the associational risk difference differs from the causal risk difference due to confounding by $L$. That is, $E(Y \vert A=1) - E(Y \vert A=0) \neq  E(Y^1) - E(Y^0)$. However, we can estimate the causal risk difference by weighting. In particular, each unit $i$ is given a weight $w_i = 1/p(a_i \vert l_i)$. These weighted units are sometimes called a 'pseudopopulation' and this weighted population is not confounded by $L$. So, we can estimate the causal effect by comparing the conditional risk differences in the *pseudopopulation*,
+By inspection, we can see that within levels of $L$, the effect of treatment is $0$. Therefore the causal parameter $\theta$ should be $0$. However, the association risk difference differs from the causal risk difference due to confounding by $L$. That is, $E(Y \vert A=1) - E(Y \vert A=0) \neq  E(Y^1) - E(Y^0)$. However, we can estimate the causal risk difference by weighting. In particular, each unit $i$ is given a weight $w_i = 1/p(a_i \vert l_i)$. These weighted units are sometimes called a 'pseudo population' and this weighted population is not confounded by $L$. So, we can estimate the causal effect by comparing the conditional risk differences in the *pseudopopulation*,
 
 ```{r}
 theta = sum(ifelse(A==1, N_pseudo * Y, 0))/sum(ifelse(A==1, N_pseudo, 0)) - sum(ifelse(A==0, N_pseudo * Y, 0))/sum(ifelse(A==0, N_pseudo, 0))
@@ -153,26 +189,8 @@ theta = sum(ifelse(A==1, N_pseudo * Y, 0))/sum(ifelse(A==1, N_pseudo, 0)) - sum(
 
 As expected, this gets us $\hat{\theta} =$ `r round(theta,1)`. 
 
-#### Many treatments (Marginal Structural Models)
 
-In the case where there are many treatment levels or treatment is continuous, it makes practical sense to hypothesize a functional realtionship between the treatment and response. For example, a linear relationship can be expressed,
-
-$$
-\begin{aligned}
-E(Y^{a}) = \beta_0 + \beta_1 a
-\end{aligned}
-$$
-Where $\beta_1$ can be interpreted as the causal effect of increasing treatment by one unit. In this more general scenario, in which our data consists of $(a_i,l_i, y_i)$, the coefficients can be estimated using the *weighted* estimating equation,
-
-$$
-\begin{aligned}
-U(\beta) &= \sum_i \frac{(y_i- \left\{\beta_0+\beta_1a_i  \right\}   )} {p(a_i|l_i)} 
-\end{aligned}
-$$
-
-which can accommodate a range of functions as well as treatment models (weights).
-
-#### Example
+#### Example MSM Estimation
 
 Consider a scenario where we aim to estimate the effect of a binary treatment, $A$, on a continuous outcome, $Y$, using observational data. Let's suppose we also have data on each patients' health, $L = \{1= \text{poor}, 2= \text{medium}, 3 = \text{good} \}$ and that $Y$ is a measure of cholesterol. Suppose that patients with better health are less likely to get treatment and that better health causes lower cholesterol. We want to estimate the population average causal effect, $\theta = E(Y^1) - E(Y^0)$ (i.e., no conditioning on $L$). The *true* value of $\theta$ is $-10$.
 
@@ -204,44 +222,36 @@ $$
 \end{aligned}
 $$
 
-yields $\hat{\alpha}=$ `r beta1.m0`. This would indicate that the treatment *increases* cholesterol. This bias arises since less healthy people with higher cholesterol are the ones who get treatment. On the other hand, the IPW derived estimate of the population average causal effect is `r round(beta1.m1,2)`.
-
-```{r echo=FALSE}
-
-L = c(0,0,0,0,1,1,1,1)
-A = c(0,0,1,1,0,0,1,1)
-Y = c(0,1,0,1,0,1,0,1)
-N = c(3,1,3,1,1,2,3,6)
-dat = data.frame(L=L, A=A, Y=Y, N=N)
-kable(dat)
-
-mw = glm(A ~ L, family = binomial, weights = N, data = dat)
-w = 1/ifelse(A==1, fitted.values(mw), 1 - fitted.values(mw))
-N_pseudo = w * N
-
-dat$w = w
-dat$N_pseudo = w * N
-
-```
+yields $\hat{\alpha}=$ `r round(beta1.m0,2)`. This would indicate that the treatment *increases* cholesterol. This bias arises since less healthy people with higher cholesterol are the ones who get treatment. On the other hand, the IPW derived estimate of the population average causal effect is `r round(beta1.m1,2)`.
 
 
+#### Variance of IPTW Estimator
 
-```{r}
+As outlined above, the IPTW estimation procedure involves two steps: first, estimate $P(A|L)$ and, second, use these estimates as weights in a GEE. Thus, the variance of the coefficients in the marginal structural model must account for the variability in the estimation of the weights. We can evaluate the asymptotic variance of the MSM coefficients by partitioning the parameter vector.
 
-d1 = dat %>% group_by(A) %>% summarise(l = sum(N_pseudo*Y), r = sum(N_pseudo))
-```
+We assume a GLM model for $P(A|L)$ with parameter vector $\boldsymbol{\alpha}$. Thus, we can write the score function as $U(\boldsymbol{\alpha})=L^T(A-\mu(\boldsymbol{\alpha}))$. To proceed, we package up all of our parameters into a vector, $\boldsymbol{\theta}=(\boldsymbol{\alpha}, \boldsymbol{\beta})$. Then, we define a score function,
 
-$$
-\begin{align}
-U(\mu^1) &= \sum_i \frac{1(a_i=1)(y_i-\mu^1)}{p(a_i \vert l_i)} \\
-\end{align}
-$$
-To simplify notation, let $w_i = 1/p(a_i \vert l_i)$. Then, we get the following estimator for $\mu^1$,
+\begin{equation*}
+    U(\boldsymbol{\theta}) = \begin{bmatrix}
+    U_1(\boldsymbol{\alpha}) \\
+    U_2(\boldsymbol{\alpha}, \boldsymbol{\beta}) \\
+    \end{bmatrix} = 
+    \begin{bmatrix}
+    L^T(a-\mu(\boldsymbol{\alpha})) \\
+    A^T W(\boldsymbol{\alpha})(y-\mu(\boldsymbol{\beta})) \\
+    \end{bmatrix}
+\end{equation*}
 
-$$
-\begin{align}
-\hat{\mu}^1 &=  \frac{\sum_t y_t/p(a_i \vert l_i)} {\sum_t 1/p(a_i \vert l_i)} \\
-\end{align}
-$$
+where $U_1$ corresponds with the score function for our model of $P(A|L)$ and $U_2$ is the score function developed above, making explicit that W depends on $\boldsymbol{\alpha}$. Under some regularity conditions and the assumption that the treatment model $P(A|L)$ is correctly specified, $E(U(\boldsymbol{\theta}))=0$. Thus, estimators for $\hat{\boldsymbol{\theta}}$ can be found by finding the values for $(\hat{\boldsymbol{\alpha}}, \hat{\boldsymbol{\beta}})$ such that $U(\hat{\boldsymbol{\theta}})=0$. Or, more practically, we first can estimate $\boldsymbol{\alpha}$ then use this estimate in $U_2$ to estimate $\boldsymbol{\beta}$. Furthermore, the asymptotic variance of $\hat{\boldsymbol{\theta}}$ can be expressed,
+
+\begin{align*}
+    V(\hat{\boldsymbol{\theta}}) &=
+    E \bigg( \frac {\partial U} {\partial \boldsymbol{\theta}} \bigg) ^{-1}
+    E(U(\boldsymbol{\theta})U(\boldsymbol{\theta})^T)
+    E \bigg( \frac {\partial U} {\partial \boldsymbol{\theta}^T} \bigg) ^{-1}
+     \\
+\end{align*}
+
+
 
 
