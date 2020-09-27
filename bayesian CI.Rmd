@@ -53,17 +53,51 @@ $$
 \end{align}
 $$
 
+$$
+\begin{align}
+P(Y^{miss} \vert Y^{obs}, A, \theta_Y) &\propto \prod_{i:A_i=1} P(Y_i^0 \vert Y_i^1, \theta_Y) \prod_{i:A_i=0} P(Y_i^1 \vert Y_i^0, \theta_Y) \\
+P(\theta_Y \vert Y^{obs}, Y^{miss}) &\sim \text{Dir} (\alpha_{11}+N_{11}, \alpha_{10}+N_{10}, \alpha_{01}+N_{01}, \alpha_{00}+N_{00})
+\end{align}
+$$
 
 
 
 
 
 
+$$
+\begin{align}
+\pi_{1+} &= \pi_{11}+\pi_{10} = P(Y^1=1) \\
+\pi_{+1} &= \pi_{01}+\pi_{11} = P(Y^0=1) \\
+\gamma &= \frac{P(Y^1=1 \vert Y^0=1)}{P(Y^1=1 \vert Y^0=0)}
+\end{align}
+$$
 
 
+$$
+\begin{align}
+P(Y^0=1 \vert Y^1=1, L=1) &\sim \text{Bern} \bigg( \frac{\gamma \pi_{+1}}{1-\pi_{+1}+\gamma \pi_{+1}} \bigg) \\
+P(Y^0=1 \vert Y^1=0, L=1) &\sim \text{Bern} \bigg( \frac{\pi_{+1}(1-\pi_{+1}+\gamma(\pi_{+1}-\pi_{1+})}{(1-\pi_{1+})(1-\pi_{+1}+\gamma \pi_{+1})} \bigg) \\
+P(Y^1=1 \vert Y^0=0, L=0) &\sim \text{Bern} \bigg(\frac{\pi_{1+}}{1-\pi_{+1}+\gamma \pi_{+1}}  \bigg) \\
+P(Y^1=1 \vert Y^0=1, L=0) &\sim \text{Bern} \bigg( \frac{\gamma \pi_{1+}}{1-\pi_{+1}+\gamma \pi_{+1}} \bigg) \\
+
+\end{align}
+$$
 
 
+```{r}
+n = 500
+py0 = .3
+py1 = .5
+gam = 1
 
+py0y11 = (gam * py0) / (1-py0 + gam*py0) # P(Y0=1 | Y1 = 1)
+py0y10 = (py0*(1-py0+gam*(py0-py1)))/((1-py1)*(1-py0 + gam * py0)) # P(Y0=1 | Y1 = 0)
+py1y01 = (gam * py1) / (1-py0 + gam*py0) # P(Y1=1 | Y0=1)
+py1y00 = (py1) / (1 - py0 + gam*py0) # P(Y1=1 | Y0=0)
+
+Y0 = rbinom(n, 1, prob = .5)
+```
 
 
 
