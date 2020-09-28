@@ -24,7 +24,9 @@ $$
 (Y_i^{obs}=Y_i^{A_i}, A_i)
 $$
 
-And one is missing: $Y^{mis}=Y_i^{1-A_i}$. Bayesian inference considers the observed values of these quantities to be realizations of random variables and the unobserved values to be unobserved random variables, just like other model parameters. We assume that the joint distribution of the **complete** data (i.e., all counterfactual outcomes) depends on some parameters, $\Theta$, and we can express the joint distribution as,
+And one is missing: $Y^{mis}=Y_i^{1-A_i}$. Therefore, given $A_i$, there is a $1:1$ map betwen, $(Y_i^1, Y_i^0)$ and $(Y_i^{obs}, Y_i^{miss})$.
+
+Bayesian inference considers the observed values of these quantities to be realizations of random variables and the unobserved values to be unobserved random variables, just like other model parameters. Bayesian causal inference typically proceeds by assuming that the joint distribution of the **complete** data (i.e., all counterfactual outcomes) depends on some parameters, $\Theta$, and we can express the joint distribution as,
 
 $$
 \begin{align}
@@ -33,7 +35,7 @@ P(Y_i^0, Y_i^1, A_i \vert \Theta) = P(A_i \vert Y_i^0, Y_i^1, \Theta) P(Y_i^0, Y
 $$
 Then, we make the following two assumptions,
 
-1. $(Y^1, Y^0) \perp A$ (marginal exchangeability)
+1. $(Y_i^1, Y_i^0) \perp A_i$ (marginal exchangeability)
 2. $\Theta = (\theta_Y, \theta_A)$, where the two parameter sets are apriori distinct and independent
 
 Which simplifies the above expression of the joint distribution to,
@@ -55,7 +57,12 @@ $$
 \tau^P = E\{Y_i^1-Y_i^0 \}.
 $$
 
-Bayesian causal inference typically proceeds by iteratively sampling $(Y^{miss}, \theta^Y)$ from $P(Y^{miss} \vert Y^{obs},A,\theta_Y)$ and $P(\theta^Y \vert Y^{miss}, Y^{obs}, A)$.
+A Gibbs sampling approach to causal inference consists of iteratively sampling $(Y^{miss}, \theta^Y)$ from $P(Y^{miss} \vert Y^{obs},A,\theta_Y)$ and $P(\theta^Y \vert Y^{miss}, Y^{obs}, A)$.
+
+#### Example
+
+Randomized experiment with binary outcome binary treatment. Since the joint potential distribution of the potential outcomes can take on one of four values, we can use a multinomial model for $(Y_i^1, Y_i^0)$.
+
 
 $$
 \begin{align}
@@ -63,6 +70,7 @@ $$
 (Y^1,Y^0) &\sim \text{MN}(\pi_{11}, \pi_{10}, \pi_{01}, \pi_{00})
 \end{align}
 $$
+
 
 $$
 \begin{align}
@@ -72,8 +80,9 @@ P(\theta_Y \vert Y^{obs}, Y^{miss}) &\sim \text{Dir} (\alpha_{11}+N_{11}, \alpha
 $$
 
 
+#### Suggested Refinement
 
-
+The Bayesian framework makes clear the connection between missing data problems and causal inference. 
 
 
 $$
@@ -91,7 +100,6 @@ P(Y^0=1 \vert Y^1=1, L=1) &\sim \text{Bern} \bigg( \frac{\gamma \pi_{+1}}{1-\pi_
 P(Y^0=1 \vert Y^1=0, L=1) &\sim \text{Bern} \bigg( \frac{\pi_{+1}(1-\pi_{+1})+\gamma(\pi_{+1}-\pi_{1+})}{(1-\pi_{1+})(1-\pi_{+1}+\gamma \pi_{+1})} \bigg) \\
 P(Y^1=1 \vert Y^0=0, L=0) &\sim \text{Bern} \bigg(\frac{\pi_{1+}}{1-\pi_{+1}+\gamma \pi_{+1}}  \bigg) \\
 P(Y^1=1 \vert Y^0=1, L=0) &\sim \text{Bern} \bigg( \frac{\gamma \pi_{1+}}{1-\pi_{+1}+\gamma \pi_{+1}} \bigg) \\
-
 \end{align}
 $$
 
@@ -108,10 +116,15 @@ py0y10 = (py0*(1-py0+gam*(py0-py1)))/((1-py1)*(1-py0 + gam * py0)) # P(Y0=1 | Y1
 py1y01 = (gam * py1) / (1-py0 + gam*py0) # P(Y1=1 | Y0=1)
 py1y00 = (py1) / (1 - py0 + gam*py0) # P(Y1=1 | Y0=0)
 
-Y0 = rbinom(n, 1, prob = .5)
+# first, lets simulate potential outcomes
+Y0 = rbinom(n, 1, prob = py0)
+prob_vec = ifelse(Y0==0, py1y00, py1y01)
+Y1 = rbinom(n, 1, prob = prob_vec)
 
 # treatment indicator
 A = rbinom(n, 1, prob = .5)
+
+# observed data
 
 
 ```
