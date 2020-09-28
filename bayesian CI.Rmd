@@ -24,7 +24,7 @@ $$
 (Y_i^{obs}=Y_i^{A_i}, A_i)
 $$
 
-And one is missing: $Y^{mis}=Y_i^{1-A_i}$. Bayesian inference considers the observed values of these quantities to be realizations of random variables and the unobserved values to be unobserved random variables, just like other model parameters. We assume that the joint distribution depends on some parameters, $\Theta$, and we can express the joint distribution as,
+And one is missing: $Y^{mis}=Y_i^{1-A_i}$. Bayesian inference considers the observed values of these quantities to be realizations of random variables and the unobserved values to be unobserved random variables, just like other model parameters. We assume that the joint distribution of the **complete** data (i.e., all counterfactual outcomes) depends on some parameters, $\Theta$, and we can express the joint distribution as,
 
 $$
 \begin{align}
@@ -33,18 +33,29 @@ P(Y_i^0, Y_i^1, A_i \vert \Theta) = P(A_i \vert Y_i^0, Y_i^1, \Theta) P(Y_i^0, Y
 $$
 Then, we make the following two assumptions,
 
-1. $(Y^1, Y^0) \perp A$
+1. $(Y^1, Y^0) \perp A$ (marginal exchangeability)
 2. $\Theta = (\theta_Y, \theta_A)$, where the two parameter sets are apriori distinct and independent
 
 Which simplifies the above expression of the joint distribution to,
 
 $$
 \begin{align}
-P(Y_i^0, Y_i^1, A_i \vert \Theta) = P(A_i \vert \theta_A) P(Y_i^0, Y_i^1 \vert \theta_Y)
+P(Y_i^0, Y_i^1, A_i \vert \Theta) = P(A_i \vert \theta_A) P(Y_i^0, Y_i^1 \vert \theta_Y).
 \end{align}
 $$
 
+Our causal estimand can be related to the sample or population. For example, the sample average treatment effect (SATE) can be expressed,
 
+$$
+\tau^S = \frac{1}{N} \sum_i \{Y_i^1-Y_i^0 \}.
+$$
+Or, it can be related to the population,
+
+$$
+\tau^P = E\{Y_i^1-Y_i^0 \}.
+$$
+
+Bayesian causal inference typically proceeds by iteratively sampling $(Y^{miss}, \theta^Y)$ from $P(Y^{miss} \vert Y^{obs},A,\theta_Y)$ and $P(\theta^Y \vert Y^{miss}, Y^{obs}, A)$.
 
 $$
 \begin{align}
@@ -77,7 +88,7 @@ $$
 $$
 \begin{align}
 P(Y^0=1 \vert Y^1=1, L=1) &\sim \text{Bern} \bigg( \frac{\gamma \pi_{+1}}{1-\pi_{+1}+\gamma \pi_{+1}} \bigg) \\
-P(Y^0=1 \vert Y^1=0, L=1) &\sim \text{Bern} \bigg( \frac{\pi_{+1}(1-\pi_{+1}+\gamma(\pi_{+1}-\pi_{1+})}{(1-\pi_{1+})(1-\pi_{+1}+\gamma \pi_{+1})} \bigg) \\
+P(Y^0=1 \vert Y^1=0, L=1) &\sim \text{Bern} \bigg( \frac{\pi_{+1}(1-\pi_{+1})+\gamma(\pi_{+1}-\pi_{1+})}{(1-\pi_{1+})(1-\pi_{+1}+\gamma \pi_{+1})} \bigg) \\
 P(Y^1=1 \vert Y^0=0, L=0) &\sim \text{Bern} \bigg(\frac{\pi_{1+}}{1-\pi_{+1}+\gamma \pi_{+1}}  \bigg) \\
 P(Y^1=1 \vert Y^0=1, L=0) &\sim \text{Bern} \bigg( \frac{\gamma \pi_{1+}}{1-\pi_{+1}+\gamma \pi_{+1}} \bigg) \\
 
@@ -86,6 +97,7 @@ $$
 
 
 ```{r}
+set.seed(1)
 n = 500
 py0 = .3
 py1 = .5
@@ -97,7 +109,20 @@ py1y01 = (gam * py1) / (1-py0 + gam*py0) # P(Y1=1 | Y0=1)
 py1y00 = (py1) / (1 - py0 + gam*py0) # P(Y1=1 | Y0=0)
 
 Y0 = rbinom(n, 1, prob = .5)
+
+# treatment indicator
+A = rbinom(n, 1, prob = .5)
+
+
 ```
+
+
+
+
+
+
+
+
 
 
 
