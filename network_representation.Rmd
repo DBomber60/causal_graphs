@@ -1,0 +1,75 @@
+---
+title: "Network"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(igraph)
+```
+
+Our starting point is that while causal influence flows one way through the graph,
+along the directions of arrows from parents to children, statistical information can
+flow in either direction.
+
+Want to measure the effect of a time varying treatment on an outcome.
+
+Let's assume that our sample consists of HIV positive patients who are treated at two time points and that between the first and second treatment we have a measurement of CD4 cell count (high is good, indicates a good immune system). $U$ is the unmeasured immunosupression level. $Y$ is binary.
+
+
+```{r}
+
+# sort of interesting that this doesn't work very well.
+
+set.seed(2)
+# simplest case of TVC
+n = 1000
+A0 = rbinom(n, 1, p = .5)
+U = rbinom(n, 1, p = .3) # U=1 people are super sick
+L1 = rnorm(n, 100 + 10 * A0 - 20 * U) # CD4 cell count (low is bad)
+A1 = rbinom(n, 1, p = plogis(.3*(100-L1)))
+Y = rbinom(n, 1, prob = plogis(-1+U))
+
+dat = data.frame(cbind(A0, L1, A1, Y))
+
+m0 = (glm(Y ~ A0 + A1 + L1, family = binomial))
+summary(m0)
+
+
+
+m1 = (lm(L1 ~ A0))
+#coefficients(m0)[4] * coef(m1)[1] + coefficients(m0)[1] # new intercept
+#coefficients(m0)[4] * coef(m1)[2] + coefficients(m0)[2]
+
+#plot(factor(A0), Y)
+
+# weighted MSM
+
+# first, come up with treatment weights
+tm = glm(A1 ~ L1, data = dat, family = binomial)
+
+wt = ifelse(dat$A1 == 1, sum(A1)/(n*predict(tm, type = "response")), (n-sum(A1))/( n * (1- predict(tm, type = "response")) ))
+
+
+
+msm = glm(Y ~ A0 + A1, weights = wt, family = binomial, data = dat)
+summary(msm)
+
+
+```
+
+$$
+P(A_0,A_1 \vert L_1) = P(A_0) P(A_1 \vert L_1)
+$$
+P(A0, A1 | L1)
+
+
+## R Markdown
+
+A CGM describes how the structure of a system is modified by an intervention.
+
+If it is possible to de- rive an expression for the desired post-interventional dis- tribution purely in terms of the joint distribution over the original system via the do-calculus then the causal query is identifiable.
+
+Explicitly created a joint model over the system pre and post-intervention, which allows the direct application of standard statistical inference, rather than requiring additional notation and operations that map from one to the other.
+
+To infer causal effects, compute a predictive distribution for the quantity of interest in the post-intervention graph using Bayes rule.
