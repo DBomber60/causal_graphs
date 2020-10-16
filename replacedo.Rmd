@@ -1,0 +1,90 @@
+---
+title: "graphs"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+#### Graphs
+
+```{r}
+set.seed(1)
+N = 2000
+Z = rbinom(N, 1, .5) # sick or not
+A0 = rbinom(N, 1, prob = plogis(-1 + 2 * Z)) # sick people more likely to get treatment
+Y = rbinom(N, 1, prob = plogis(Z - A0))
+dat = data.frame(cbind(Y, A0, Z))
+summary(glm(Y~A0 + Z , family = binomial)) # confounding
+```
+
+
+1. get posterior for all parameters
+
+```{r}
+
+# y posterior - under treatment
+dat_t = dat %>% group_by(A0, Z) %>% summarise(tot1 = sum(Y), tot = n()) %>% mutate(tot0 = tot - tot1)
+
+
+nIter = 2000
+
+sampled_y = array(0, dim = c(nIter,1))
+
+for (i in 1:nIter) {
+  
+  # sample a Z
+  theta_z = rbeta(1, shape1 = sum(dat$Z), shape2 = N - sum(dat$Z))
+  z = rbinom(1, 1, prob = theta_z)
+  
+  filtered = filter(dat_t, A0 == 1, Z == z)
+  
+  # then sample a Y
+  theta_y = rbeta(1, shape1 = filtered$tot1, shape2 = filtered$tot0)
+  ystar = rbinom(1, 1, prob = theta_y)
+  
+  sampled_y[i] = ystar
+}
+
+mean(sampled_y)
+
+# truth 
+plogis(-0.82395) * .5 + plogis(-0.82395 + 0.88728) * .5
+
+```
+
+
+```{r}
+# y posterior - under treatment
+dat_t = dat %>% group_by(A0, Z) %>% summarise(tot1 = sum(Y), tot = n()) %>% mutate(tot0 = tot - tot1)
+
+nIter = 2000
+
+sampled_y = array(0, dim = c(nIter,1))
+
+for (i in 1:nIter) {
+  
+  # sample a Z
+  theta_z = rbeta(1, shape1 = sum(dat$Z), shape2 = N - sum(dat$Z))
+  z = rbinom(1, 1, prob = theta_z)
+  
+  filtered = filter(dat_t, A0 == 0, Z == z)
+  
+  # then sample a Y
+  theta_y = rbeta(1, shape1 = filtered$tot1, shape2 = filtered$tot0)
+  ystar = rbinom(1, 1, prob = theta_y)
+  
+  sampled_y[i] = ystar
+}
+
+mean(sampled_y)
+
+
+plogis(0.04 + 0.88728) * .5 + plogis(0.04) * .5
+
+```
+
+
+
